@@ -1,4 +1,5 @@
 GO ?= go
+VERSION ?= `git describe --tags --abbrev=0 | sed s/^//`
 
 .PHONY: install
 install:
@@ -25,3 +26,11 @@ release:
 	goreleaser --snapshot --skip-publish --rm-dist
 	@echo -n "Do you want to release? [y/N] " && read ans && [ $${ans:-N} = y ]
 	goreleaser --rm-dist
+
+.PHONY: orb-validate
+orb-validate:
+	circleci orb validate .circleci/config.yml
+
+.PHONY: orb-publish
+orb-publish: orb-validate
+	set -x; circleci orb publish .circleci/config.yml moul/dl@${VERSION}
