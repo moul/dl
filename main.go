@@ -1,6 +1,7 @@
 package main // import "moul.io/dl"
 
 import (
+	"crypto/tls"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -25,6 +26,7 @@ func main() {
 			&cli.StringFlag{Name: "output", Aliases: []string{"o", "O"}},
 			&cli.StringFlag{Name: "unarchive"},
 			&cli.BoolFlag{Name: "debug", Aliases: []string{"D"}},
+			&cli.BoolFlag{Name: "insecure"},
 			&cli.StringFlag{Name: "chmod", Aliases: []string{"c"}, Value: "664"},
 		},
 		Action: dl,
@@ -80,6 +82,9 @@ func dl(c *cli.Context) error {
 	log.WithField("url", url).Debug("starting download")
 	log.WithField("chmod", chmod).Debug("file permissions")
 
+	if c.Bool("insecure") {
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
