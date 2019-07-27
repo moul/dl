@@ -1,5 +1,5 @@
 GO ?= go
-VERSION ?= `git describe --tags --abbrev=0 | sed s/^//`
+VERSION ?= `git describe --tags --abbrev=0 | sed s/^v//`
 
 .PHONY: install
 install:
