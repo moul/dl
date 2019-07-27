@@ -1,5 +1,105 @@
 version: 2.1
 
+commands:
+  install_dl:
+    description: "Install moul.io/dl (if missing)"
+    parameters:
+      version:
+        type: string
+        default: "v1.5.0"
+      sudo:
+        type: boolean
+        default: true
+      insecure:
+        type: boolean
+        default: false
+    steps:
+      - run:
+          name: "Install moul.io/dl (if missing)"
+          command: |
+            command -v dl &>/dev/null || (
+              version="<< parameters.version >>"
+              insecure="<< parameters.insecure >>"
+              version_without_prefix=`echo "$version" | sed s/^v//`
+              url="https://github.com/moul/dl/releases/download/${version}/dl_${version_without_prefix}_$(uname -s)_$(uname -m).tar.gz"
+              if command -v wget &>/dev/null; then
+                (
+                  set -x
+                  wget -O /tmp/dl.tar.gz "$url"
+                )
+              else
+                if command -v curl &>/dev/null; then
+                  (
+                    set -x
+                    curl -L -o /tmp/dl.tar.gz "$url"
+                  )
+                fi
+              fi
+              (
+                cd /tmp
+                set -e
+                tar xf dl.tar.gz
+                ls -la dl_*/
+                prefix=""
+                if [ "x<< parameters.sudo >>" = "xtrue" ]; then
+                  prefix="sudo"
+                fi
+                ${prefix} dl_*/dl --debug --insecure=$insecure --unarchive=dl -i "$url" # FIXME: use dl -i self
+              )
+            )
+            set -x
+            ${SHELL:-sh} -ec "dl --version"
+
+  install:
+    description: "Download a binary, move it to a writable directory in your $PATH, set it to executable"
+    parameters:
+      url:
+        type: string
+      output:
+        type: string
+        default: ""
+      debug:
+        type: boolean
+        default: false
+      unarchive:
+        type: string
+        default: ""
+      sudo:
+        type: boolean
+        default: true
+      insecure:
+        type: boolean
+        default: false
+    steps:
+      - install_dl:
+          sudo: << parameters.sudo >>
+          insecure: << parameters.insecure >>
+      - run:
+          name: "Install << parameters.url >>"
+          command: |
+            prefix=""
+            if [ "x<< parameters.sudo >>" = "xtrue" ]; then
+              prefix="sudo"
+            fi
+            ${prefix} dl --unarchive="<< parameters.unarchive >>" --install --insecure="<< parameters.insecure >>" --output="<< parameters.output >>" --debug="<< parameters.debug >>"  "<< parameters.url >>"
+
+  test:
+    description: "Internal, do not use in another project"
+    parameters:
+      sudo:
+        type: boolean
+        default: true
+      insecure:
+        type: boolean
+        default: true
+    steps:
+      - install:
+          url: https://github.com/moul/retry/releases/download/v0.5.0/retry_$(uname -s)_$(uname -m)
+          output: retry
+          sudo: << parameters.sudo >>
+          insecure: << parameters.insecure >>
+      - run: retry --version
+
 executors:
   golang:
     working_directory: /go/src/moul.io/dl
@@ -9,23 +109,19 @@ executors:
       GO111MODULE: "on"
       DOCKER_IMAGE: moul/dl
 
-orbs:
-  codecov: codecov/codecov@1.0.5
-  moul: moul/build@1.3.0
-
 jobs:
   go-build:
     executor: golang
     steps:
       - checkout
-      - moul/install_retry
-      - run: /tmp/retry -m 3 go mod download
-      - run: /tmp/retry -m 3 make install
-      - run: /tmp/retry -m 3 make test
-      - moul/install_golangci-lint
-      - run: PATH=$PATH:$(pwd)/bin /tmp/retry -m 3 make lint
-      - codecov/upload:
-          file: coverage.txt
+      - install:
+          url: https://github.com/moul/retry/releases/download/v0.5.0/retry_$(uname -s)_$(uname -m)
+          output: retry
+      - run: retry -m 3 go mod download
+      - run: retry -m 3 make install
+      - run: retry -m 3 make test
+      - run: retry -m 3 curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s "v1.15.0"
+      - run: PATH=$PATH:bin retry -m 3 make lint
 
   docker-build:
     executor: golang
@@ -33,11 +129,22 @@ jobs:
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
-      - moul/install_retry
-      - run: /tmp/retry -m 3 docker build -t ${DOCKER_IMAGE} .
+      - install:
+          url: https://github.com/moul/retry/releases/download/v0.5.0/retry_$(uname -s)_$(uname -m)
+          output: retry
+      - run: retry -m 3 docker build -t ${DOCKER_IMAGE} .
+
+  test-circleci-node:   { docker: [ image: "circleci/node" ], steps: [test]}
+  test-circleci-golang: { docker: [ image: "circleci/golang" ], steps: [test]}
+  test-circleci-python: { docker: [ image: "circleci/python" ], steps: [test]}
+  test-alpine:          { docker: [ image: "alpine" ], steps: [test: {sudo: false, insecure: true}]}
 
 workflows:
   main:
     jobs:
       - go-build
       - docker-build
+      - test-circleci-node
+      - test-circleci-golang
+      - test-circleci-python
+      - test-alpine
