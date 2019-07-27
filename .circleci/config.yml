@@ -2,12 +2,12 @@ version: 2.1
 
 executors:
   golang:
-    working_directory: /go/src/moul.io/golang-repo-template
+    working_directory: /go/src/moul.io/dl
     docker:
       - image: circleci/golang:1.12
     environment:
       GO111MODULE: "on"
-      DOCKER_IMAGE: moul/golang-repo-template
+      DOCKER_IMAGE: moul/dl
 
 orbs:
   codecov: codecov/codecov@1.0.2
