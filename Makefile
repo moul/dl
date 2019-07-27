@@ -2,7 +2,7 @@ GO ?= go
 
 .PHONY: install
 install:
-	$(GO) install .
+	CGO_ENABLED=0 $(GO) install -a -ldflags '-extldflags "-static"' .
 
 .PHONY: test
 test:

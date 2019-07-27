@@ -5,6 +5,12 @@ builds:
   -
     goos: [linux, darwin]
     goarch: [386, amd64, arm, arm64]
+    flags:
+      - "-a"
+    ldflags:
+      - '-extldflags "-static"'
+    env:
+      - CGO_ENABLED=0
 archives:
   - wrap_in_directory: true
     replacements:
