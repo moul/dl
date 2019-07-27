@@ -115,6 +115,9 @@ func dl(c *cli.Context) error {
 			return err
 		}
 		defer out.Close()
+		if err := os.Chmod(downloadLocation, chmod); err != nil {
+			return err
+		}
 	}
 
 	length, err := io.Copy(out, resp.Body)
@@ -147,11 +150,6 @@ func dl(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	// ensure chmod is set (when writing over an existing file)
-	if err := os.Chmod(downloadLocation, chmod); err != nil {
-		return err
 	}
 	return err
 }
