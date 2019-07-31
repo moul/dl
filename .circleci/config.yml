@@ -9,7 +9,7 @@ commands:
         default: "v1.6.0"
       sudo:
         type: boolean
-        default: true
+        default: false
       insecure:
         type: boolean
         default: false
@@ -18,6 +18,10 @@ commands:
           name: "Install moul.io/dl (if missing)"
           command: |
             command -v dl &>/dev/null || (
+              mkdir -p ~/bin
+              echo "export PATH=$PATH:~/bin" >> ~/.profile
+              echo '. ~/.profile' >> $BASH_ENV
+              export PATH=~/bin:$PATH
               version="<< parameters.version >>"
               insecure="<< parameters.insecure >>"
               version_without_prefix=`echo "$version" | sed s/^v//`
@@ -48,7 +52,7 @@ commands:
               )
             )
             set -x
-            ${SHELL:-sh} -ec "dl --version"
+            ${SHELL:-sh} -ec ". ~/.profile && dl --version"
 
   install:
     description: "Download a binary, move it to a writable directory in your $PATH, set it to executable"
@@ -81,6 +85,7 @@ commands:
             if [ "x<< parameters.sudo >>" = "xtrue" ]; then
               prefix="sudo"
             fi
+            . ~/.profile
             ${prefix} dl --unarchive="<< parameters.unarchive >>" --install --insecure="<< parameters.insecure >>" --output="<< parameters.output >>" --debug="<< parameters.debug >>"  "<< parameters.url >>"
 
   test:
