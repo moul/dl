@@ -14,8 +14,8 @@ import (
 
 	"github.com/mholt/archiver"
 	log "github.com/sirupsen/logrus"
+	cli "github.com/urfave/cli/v2"
 	"golang.org/x/sys/unix"
-	cli "gopkg.in/urfave/cli.v2"
 )
 
 func main() {
