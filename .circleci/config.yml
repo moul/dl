@@ -109,7 +109,7 @@ executors:
   golang:
     working_directory: /go/src/moul.io/dl
     docker:
-      - image: circleci/golang:1.16
+      - image: circleci/golang:1.17
     environment:
       GO111MODULE: "on"
       DOCKER_IMAGE: moul/dl
